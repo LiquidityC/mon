@@ -1,12 +1,16 @@
 CC			= gcc
 LDFLAGS		=
-CFLAGS		= -g
+CFLAGS		= -g -Iinc -Wall
 RM			= rm
-MODULE		= onchange
-CLANGFORMAT	= clang-format
+MODULE		= mon
+FORMAT		= clang-format
+CHECK		= cppcheck
 
 SRC = \
-	src/main.c
+	src/main.c \
+	src/command_list.c \
+	src/memory.c \
+	src/string_utils.c
 
 OBJ=$(patsubst %.c,%.o,$(SRC))
 
@@ -25,6 +29,9 @@ clean:
 	$(RM) -rf $(OBJ) $(MODULE)
 
 fmt:
-	@$(CLANGFORMAT) -i src/*.[ch]
+	@$(FORMAT) -i src/*.[ch]
 
-.PHONY: $(MODULE) clean all fmt run
+check:
+	@$(CHECK) -x c --std=c11 -Iinc -i/usr/include --enable=all --suppress=missingIncludeSystem .
+
+.PHONY: $(MODULE) clean all fmt run check
