@@ -3,6 +3,7 @@ LDFLAGS		=
 CFLAGS		= -g
 RM			= rm
 MODULE		= onchange
+CLANGFORMAT	= clang-format
 
 SRC = \
 	src/main.c
@@ -23,4 +24,7 @@ run: $(MODULE)
 clean:
 	$(RM) -rf $(OBJ) $(MODULE)
 
-.PHONY: $(MODULE) clean all
+fmt:
+	@$(CLANGFORMAT) -i src/*.[ch]
+
+.PHONY: $(MODULE) clean all fmt run
