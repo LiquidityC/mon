@@ -13,10 +13,10 @@ OBJ=$(patsubst %.c,%.o,$(SRC))
 all: $(MODULE)
 
 $(OBJ): %.o: %.c
-	$(CC) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 $(MODULE): $(OBJ)
-	$(CC) -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
 
 run: $(MODULE)
 	@./$(MODULE)
