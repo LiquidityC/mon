@@ -42,7 +42,9 @@ int main(int32_t argc, char *argv[])
 		}
 	}
 
-	return run_commands(cmd_list);
+	(void) run_commands(cmd_list);
 
 	command_list_destroy(cmd_list);
+
+	return 0;
 }

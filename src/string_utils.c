@@ -31,7 +31,7 @@ size_t string_parse_command(const char *src, char delim, char **buffer,
 
 	/* Include the final command if available */
 	if (*start != '\0') {
-		strncpy(buffer[len], start, nmemb);
+		strncpy(buffer[len], start, maxlen);
 		len++;
 	}
 

@@ -19,6 +19,9 @@ struct command_list *command_list_create(void)
 
 void command_list_destroy(struct command_list *cl)
 {
+	for (size_t i = 0; i < MAX_COMMANDS; ++i) {
+		free(cl->cmd[i]);
+	}
 	free(cl->cmd);
 	cl->cmd = NULL;
 	free(cl);
