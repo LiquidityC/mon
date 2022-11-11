@@ -54,6 +54,7 @@ int main(int32_t argc, char *argv[])
 	(void)run_commands(cmd_list);
 
 	string_list_destroy(cmd_list);
+	string_list_destroy(file_list);
 
 	return 0;
 }
