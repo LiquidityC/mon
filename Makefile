@@ -1,6 +1,6 @@
 CC			= gcc
 LDFLAGS		=
-CFLAGS		= -g -Iinc -Wall
+CFLAGS		= -g -Iinc -Wall -fsanitize=address -fno-omit-frame-pointer
 RM			= rm
 MODULE		= mon
 FORMAT		= clang-format
@@ -8,9 +8,8 @@ CHECK		= cppcheck
 
 SRC = \
 	src/main.c \
-	src/command_list.c \
-	src/memory.c \
-	src/string_utils.c
+	src/string_list.c \
+	src/memory.c
 
 OBJ=$(patsubst %.c,%.o,$(SRC))
 
@@ -20,7 +19,7 @@ $(OBJ): %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(MODULE): $(OBJ)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 run: $(MODULE)
 	@./$(MODULE)
