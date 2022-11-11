@@ -21,12 +21,9 @@ void string_list_add(struct string_list *node, const char *cmd)
 
 void string_list_destroy(struct string_list *node)
 {
-	struct string_list *next = node->next;
-	struct string_list *curr = node;
-	while (next != NULL) {
-		free(curr);
-		curr = next;
-		next = curr->next;
+	while (node) {
+		struct string_list *next = node->next;
+		free(node);
+		node = next;
 	}
-	free(curr);
 }
