@@ -34,7 +34,7 @@ static int32_t run_commands(struct string_list *commands)
 		if (status == -1) {
 			perror("system");
 			return EXIT_FAILURE;
-		}
+		};
 		commands = commands->next;
 	}
 	return EXIT_SUCCESS;

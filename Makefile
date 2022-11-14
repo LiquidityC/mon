@@ -11,22 +11,23 @@ MKDIR		= mkdir
 PANDOC		= pandoc
 
 PREFIX ?= out
+SRCDIR	= src
+OBJDIR	= .obj
+DOCDIR	= doc
+MANDIR	= doc/man
 
-SRC = \
-	src/main.c \
-	src/string_list.c \
-	src/memory.c
+SRC = $(wildcard $(SRCDIR)/*.c)
+OBJ = $(subst $(SRCDIR)/,$(OBJDIR)/,$(patsubst %.c,%.o,$(SRC)))
 
-OBJ=$(patsubst %.c,%.o,$(SRC))
-
-MDFILES = $(wildcard doc/mon.*.md)
-MANFILES = $(subst doc/,doc/man/,$(patsubst doc/%.md,doc/%, $(MDFILES)))
+MDFILES = $(wildcard $(DOCDIR)/mon.*.md)
+MANFILES = $(subst $(DOCDIR)/,$(MANDIR)/,$(patsubst $(DOCDIR)/%.md,$(DOCDIR)/%, $(MDFILES)))
 
 default: $(MODULE)
 
 all: $(MODULE) $(MANFILES)
 
-$(OBJ): %.o: %.c
+$(OBJ): $(OBJDIR)/%.o: $(SRCDIR)/%.c
+	@$(MKDIR) -p .obj/
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(MODULE): $(OBJ)
@@ -36,16 +37,18 @@ run: $(MODULE)
 	@./$(MODULE)
 
 clean:
-	$(RM) -rf $(OBJ) $(MODULE) $(MANFILES) $(PREFIX)
+	$(RM) -rf $(OBJ) $(MODULE) $(MANFILES) $(PREFIX) $(OBJDIR) $(MANDIR)
 
 fmt:
 	@$(FORMAT) -i src/*.[ch]
 
 check:
+	@$(ECHO) "Checking formatting"
+	@$(FORMAT) --dry-run -Werror src/*.[ch]
 	@$(CHECK) -x c --std=c11 -Iinc -i/usr/include --enable=all --suppress=missingIncludeSystem .
 
 $(MANFILES): $(MDFILES)
-	@mkdir -p doc/man
+	@mkdir -p $(MANDIR)
 	$(PANDOC) $< -s -t man -o $@
 
 man: $(MANFILES)
@@ -56,6 +59,6 @@ install: $(MODULE) $(MANFILES)
 	@$(ECHO) "Installing binary : $(PREFIX)/bin/$(MODULE)"
 	@$(CP) -v $(MODULE) $(PREFIX)/bin/$(MODULE)
 	@$(ECHO) "Installing man files"
-	@$(CP) -v doc/man/*.1 $(PREFIX)/share/man/man1/
+	@$(CP) -v $(MANDIR)/*.1 $(PREFIX)/share/man/man1/
 
 .PHONY: $(MODULE) clean all fmt run check install
