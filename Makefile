@@ -5,6 +5,7 @@ RM			= rm
 MODULE		= mon
 FORMAT		= clang-format
 CHECK		= cppcheck
+PANDOC		= pandoc
 
 SRC = \
 	src/main.c \
@@ -33,4 +34,7 @@ fmt:
 check:
 	@$(CHECK) -x c --std=c11 -Iinc -i/usr/include --enable=all --suppress=missingIncludeSystem .
 
-.PHONY: $(MODULE) clean all fmt run check
+man:
+	$(PANDOC) doc/mon.1.md -s -t man | man -l -
+
+.PHONY: $(MODULE) clean all fmt run check man
