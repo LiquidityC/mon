@@ -1,17 +1,17 @@
 /**
  * mon - React to change in a filesystem path
  * Copyright (C) 2022  Linus Probert
- * 
+ *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
@@ -23,8 +23,10 @@
 #include <string.h>
 #include <getopt.h>
 #include <sys/inotify.h>
+#include <errno.h>
 
 #include "string_list.h"
+#include "memory.h"
 
 static int32_t run_commands(struct string_list *commands)
 {
@@ -40,6 +42,18 @@ static int32_t run_commands(struct string_list *commands)
 	return EXIT_SUCCESS;
 }
 
+static int create_watch(int32_t fd, int32_t *wd, const char *path)
+{
+	printf("[**] Setting up watch: %s\n", path);
+	*wd = inotify_add_watch(fd, path, IN_CLOSE_WRITE);
+	if (*wd == -1) {
+		fprintf(stderr, "Failed to watch '%s': %s\n", path,
+			strerror(errno));
+		return EXIT_FAILURE;
+	}
+	return EXIT_SUCCESS;
+}
+
 int main(int32_t argc, char *argv[])
 {
 	int32_t opt;
@@ -47,6 +61,10 @@ int main(int32_t argc, char *argv[])
 	/* Prepare the command list */
 	struct string_list *cmd_list = NULL;
 	struct string_list *file_list = NULL;
+
+	size_t fcount = 0;
+	int32_t fd = 0;
+	int32_t *wd = NULL;
 
 	while ((opt = getopt(argc, argv, "p:c:")) != -1) {
 		switch (opt) {
@@ -63,16 +81,67 @@ int main(int32_t argc, char *argv[])
 			} else {
 				string_list_add(file_list, optarg);
 			}
+			fcount++;
 		} break;
 		default:
 			break;
 		}
 	}
 
-	(void)run_commands(cmd_list);
+	/* Set-up inotify */
+	fd = inotify_init();
+	if (fd == -1) {
+		perror("inotify_init");
+		goto cleanup;
+	}
 
-	string_list_destroy(cmd_list);
-	string_list_destroy(file_list);
+	wd = ec_calloc(fcount, sizeof(int32_t));
+	struct string_list *it = file_list;
+	size_t index = 0;
+	while (it) {
+		if (create_watch(fd, &wd[index++], it->cmd) != EXIT_SUCCESS)
+			goto cleanup;
+		it = it->next;
+	}
+
+	char buf[4096]
+		__attribute__((aligned(__alignof__(struct inotify_event))));
+
+	ssize_t read_len;
+	while (1) {
+		read_len = read(fd, buf, 4096);
+		if (read_len == -1) {
+			perror("read");
+			goto cleanup;
+		}
+
+		for (char *ptr = buf; ptr < buf + read_len;
+		     ptr += sizeof(struct inotify_event)) {
+			struct inotify_event *event =
+				(struct inotify_event *)ptr;
+
+			if (event->mask & IN_CLOSE_WRITE) {
+				printf("WRITE:");
+				if (event->len > 0)
+					printf(" %s\n", event->name);
+				else
+					printf(" unknown file\n");
+				if (run_commands(cmd_list) != EXIT_SUCCESS) {
+					goto cleanup;
+				}
+			}
+		}
+	}
+
+cleanup:
+	if (fd)
+		(void)close(fd);
+	if (wd)
+		free(wd);
+	if (cmd_list)
+		string_list_destroy(cmd_list);
+	if (file_list)
+		string_list_destroy(file_list);
 
 	return 0;
 }
