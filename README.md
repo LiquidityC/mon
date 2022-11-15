@@ -9,15 +9,15 @@ automatically move new files once created. The main goal is to do it's job
 through a simple command line interface and not require any deep understanding
 of file system events.
 
-# SYNOPSIS
+## Synopsis
 
 **mon** -f *FILE* -c *COMMAND*
 
-# EXAMPLES
+## Examples
 
 **mon** -p */path/to/dir* -c *"make test"*
 
-# COMPILING
+## Compiling
 
 In the source root type `make`. To build a release version use `RELEASE_BUILD=1
 make`. You can also generate man files `make man`, this requires
@@ -26,7 +26,7 @@ make`. You can also generate man files `make man`, this requires
 [cppcheck](https://cppcheck.sourceforge.io/) and
 [clang-format](https://clang.llvm.org/docs/ClangFormat.html).
 
-# INSTALLATION
+## Installation
 
 The command `make install` will build a file structure of the project in the
 linux format. By default this will b output into the `<project-root>/out`
