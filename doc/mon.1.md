@@ -25,14 +25,14 @@ of file system events.
 
 # OPTIONS
 
-**-p** _PATH_, **--path**=_PATH_
+**-p** _PATH_
 : A file or directory to monitor. Can be provided multiple times.
 
-**-c** _COMMAND_, **--command**=_COMMAND_
+**-c** _COMMAND_
 : A command to run when a change is detected. Can be provided multiple times.
 
 **-v**, **-V**
-: Verbose and extra verbose output
+: Verbose (*-v*) and extra verbose (*-V*) output
 
 # BUGS
 
