@@ -21,7 +21,17 @@ jobs:
       run: make check
     - name: Build docs
       run: make man
+    - name: Clean up (debug)
+      run: make clean
     - name: Release build
-      run: make man
+      run: make
+      env:
+        RELEASE_BUILD: 1
+    - name: Install
+      run: make install
+      env:
+        RELEASE_BUILD: 1
+    - name: Clean up (release)
+      run: make clean
       env:
         RELEASE_BUILD: 1
