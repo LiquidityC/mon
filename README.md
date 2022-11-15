@@ -11,7 +11,7 @@ of file system events.
 
 ## Synopsis
 
-**mon** -f *FILE* -c *COMMAND*
+**mon** -p *FILE* -c *COMMAND*
 
 ## Examples
 

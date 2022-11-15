@@ -28,29 +28,18 @@
 #include "string_list.h"
 #include "memory.h"
 #include "log.h"
+#include "mon.h"
 
 static int32_t run_commands(struct string_list *commands)
 {
 	while (commands) {
-		log_inf("Running command: %s", commands->cmd);
-		int32_t status = system(commands->cmd);
+		log_inf("Running command: %s", commands->val);
+		int32_t status = system(commands->val);
 		if (status == -1) {
 			perror("system");
 			return EXIT_FAILURE;
 		};
 		commands = commands->next;
-	}
-	return EXIT_SUCCESS;
-}
-
-static int create_watch(int32_t fd, int32_t *wd, const char *path)
-{
-	log_inf("Setting up watch: %s\n", path);
-	*wd = inotify_add_watch(fd, path,
-				IN_CLOSE_WRITE | IN_MODIFY | IN_CREATE);
-	if (*wd == -1) {
-		log_err("Failed to watch '%s': %s\n", path, strerror(errno));
-		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
 }
@@ -96,29 +85,34 @@ int main(int32_t argc, char *argv[])
 	}
 
 	/* Set-up inotify */
-	fd = inotify_init();
-	if (fd == -1) {
-		perror("inotify_init");
+	if (mon_init() != EXIT_SUCCESS) {
+		perror("mon_init");
 		goto cleanup;
 	}
 
+	// TODO: Move based on the below todo comment?
 	wd = ec_calloc(fcount, sizeof(int32_t));
 	struct string_list *it = file_list;
 	size_t index = 0;
 	while (it) {
-		if (create_watch(fd, &wd[index++], it->cmd) != EXIT_SUCCESS)
+		log_dbg("Watching: %s", it->val);
+		if (mon_watch(&wd[index++], it->val) != EXIT_SUCCESS) {
+			perror("mon_watch");
 			goto cleanup;
+		}
 		it = it->next;
 	}
 
+	// TODO: move this read logic into mon.c ?
+	// mon.c could probably maintain a linked list of mon objects. Or an array
+	// with some smart resizing logic.
 	char buf[4096]
 		__attribute__((aligned(__alignof__(struct inotify_event))));
-
 	ssize_t read_len;
 	while (1) {
-		read_len = read(fd, buf, 4096);
+		read_len = mon_read(buf, 4096);
 		if (read_len == -1) {
-			perror("read");
+			perror("mon_read");
 			goto cleanup;
 		}
 
@@ -152,6 +146,8 @@ cleanup:
 		string_list_destroy(cmd_list);
 	if (file_list)
 		string_list_destroy(file_list);
+
+	mon_close();
 
 	return 0;
 }

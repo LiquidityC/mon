@@ -18,19 +18,14 @@
 #ifndef _LOG_H_
 #define _LOG_H_
 
-enum log_level {
-	LOG_LVL_NONE,
-	LOG_LVL_ERROR,
-	LOG_LVL_INFO,
-	LOG_LVL_DEBUG
-};
+enum log_level { LOG_LVL_NONE, LOG_LVL_ERROR, LOG_LVL_INFO, LOG_LVL_DEBUG };
 
 void set_log_level(enum log_level level);
 
 void log_out(enum log_level level, const char *fmt, ...);
 
-#define log_dbg(fmt, args...) log_out(LOG_LVL_DEBUG, fmt, ## args)
-#define log_inf(fmt, args...) log_out(LOG_LVL_INFO, fmt, ## args)
-#define log_err(fmt, args...) log_out(LOG_LVL_ERROR, fmt, ## args)
+#define log_dbg(fmt, args...) log_out(LOG_LVL_DEBUG, fmt, ##args)
+#define log_inf(fmt, args...) log_out(LOG_LVL_INFO, fmt, ##args)
+#define log_err(fmt, args...) log_out(LOG_LVL_ERROR, fmt, ##args)
 
 #endif // _LOG_H_

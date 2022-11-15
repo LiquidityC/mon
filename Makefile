@@ -47,7 +47,7 @@ clean:
 	$(RM) -rf $(OBJ) $(MODULE) $(MANFILES) $(PREFIX) $(OBJDIR) $(MANDIR)
 
 fmt:
-	@$(FORMAT) -i src/*.[ch]
+	@$(FORMAT) -i src/*.c inc/*.h
 
 check:
 	@$(ECHO) "Checking formatting"
