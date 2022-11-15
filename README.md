@@ -1,10 +1,13 @@
-% MON(1) mon 0.1.0
-% Linus Probert
-% November 2022
+[![Build and Check](https://github.com/LiquidityC/mon/actions/workflows/build-check.yml/badge.svg)](https://github.com/LiquidityC/mon/actions/workflows/build-check.yml)
 
-# NAME
+## mon - react to changes in a file system path
 
-mon - react to changes in a filesystem path
+**mon** Is a utility program that can trigger user provided shell commands when
+file system changes occur in a provided directory path. It can be useful if you
+want to trigger tests automatically while developing some code. Or
+automatically move new files once created. The main goal is to do it's job
+through a simple command line interface and not require any deep understanding
+of file system events.
 
 # SYNOPSIS
 
@@ -14,35 +17,20 @@ mon - react to changes in a filesystem path
 
 **mon** -p */path/to/dir* -c *"make test"*
 
-# DESCRIPTION
+# COMPILING
 
-**mon** monitors a directory or file for change (writes). If one occurs the
-provided commands will execute in order of apperance.
+In the source root type `make`. To build a release version use `RELEASE_BUILD=1
+make`. You can also generate man files `make man`, this requires
+[pandoc](https://pandoc.org/). Running tests and formatting the source code
+`make check` and `make fmt` require
+[cppcheck](https://cppcheck.sourceforge.io/) and
+[clang-format](https://clang.llvm.org/docs/ClangFormat.html).
 
-# OPTIONS
+# INSTALLATION
 
-**-p** _PATH_, **--path**=_PATH_
-: A file or directory to monitor. Can be provided multiple times.
-
-**-c** _COMMAND_, **--command**=_COMMAND_
-: A command to run when a change is detected. Can be provided multiple times.
-
-# BUGS
-
-Please report any bugs at <https://github.com/LiquidityC/mon>
-
-# COPYRIGHT
-Copyright (C) 2022  Linus Probert
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
+The command `make install` will build a file structure of the project in the
+linux format. By default this will b output into the `<project-root>/out`
+directory. This can be controlled by the `PREFIX` environment variable. Eg.
+`PREFIX=~/.local make install`. In most cases you will want to combine this
+with the `RELEASE_BUILD` environment variable. Eg. `RELEASE_BUILD=1
+PREFIX=~/.local make install`

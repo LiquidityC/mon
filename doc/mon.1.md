@@ -4,7 +4,7 @@
 
 # NAME
 
-mon - react to changes in a filesystem path
+mon - react to changes in a file system path
 
 # SYNOPSIS
 
@@ -16,8 +16,12 @@ mon - react to changes in a filesystem path
 
 # DESCRIPTION
 
-**mon** monitors a directory or file for change (writes). If one occurs the
-provided commands will execute in order of apperance.
+**mon** Is a utility program that can trigger user provided shell commands when
+file system changes occur in a provided directory path. It can be useful if you
+want to trigger tests automatically while developing some code. Or
+automatically move new files once created. The main goal is to do it's job
+through a simple command line interface and not require any deep understanding
+of file system events.
 
 # OPTIONS
 
@@ -26,6 +30,9 @@ provided commands will execute in order of apperance.
 
 **-c** _COMMAND_, **--command**=_COMMAND_
 : A command to run when a change is detected. Can be provided multiple times.
+
+**-v**, **-V**
+: Verbose and extra verbose output
 
 # BUGS
 

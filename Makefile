@@ -1,6 +1,6 @@
 CC			= gcc
 LDFLAGS		=
-CFLAGS		= -g -Iinc -Wall -fsanitize=address -fno-omit-frame-pointer
+CFLAGS		= -Iinc
 RM			= rm
 MODULE		= mon
 FORMAT		= clang-format
@@ -16,6 +16,13 @@ OBJDIR	= .obj
 DOCDIR	= doc
 MANDIR	= doc/man
 
+ifndef RELEASE_BUILD
+	CFLAGS += -DDEBUG_BUILD -Wall -g -fsanitize=address -fno-omit-frame-pointer
+else
+	CFLAGS += -O2 -DRELEASE_BUILD
+	OBJDIR = .objrls
+endif
+
 SRC = $(wildcard $(SRCDIR)/*.c)
 OBJ = $(subst $(SRCDIR)/,$(OBJDIR)/,$(patsubst %.c,%.o,$(SRC)))
 
@@ -27,7 +34,7 @@ default: $(MODULE)
 all: $(MODULE) $(MANFILES)
 
 $(OBJ): $(OBJDIR)/%.o: $(SRCDIR)/%.c
-	@$(MKDIR) -p .obj/
+	@$(MKDIR) -p $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(MODULE): $(OBJ)

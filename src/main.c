@@ -27,11 +27,12 @@
 
 #include "string_list.h"
 #include "memory.h"
+#include "log.h"
 
 static int32_t run_commands(struct string_list *commands)
 {
 	while (commands) {
-		printf("Running command: %s\n", commands->cmd);
+		log_inf("Running command: %s", commands->cmd);
 		int32_t status = system(commands->cmd);
 		if (status == -1) {
 			perror("system");
@@ -44,11 +45,11 @@ static int32_t run_commands(struct string_list *commands)
 
 static int create_watch(int32_t fd, int32_t *wd, const char *path)
 {
-	printf("[**] Setting up watch: %s\n", path);
-	*wd = inotify_add_watch(fd, path, IN_CLOSE_WRITE);
+	log_inf("Setting up watch: %s\n", path);
+	*wd = inotify_add_watch(fd, path,
+				IN_CLOSE_WRITE | IN_MODIFY | IN_CREATE);
 	if (*wd == -1) {
-		fprintf(stderr, "Failed to watch '%s': %s\n", path,
-			strerror(errno));
+		log_err("Failed to watch '%s': %s\n", path, strerror(errno));
 		return EXIT_FAILURE;
 	}
 	return EXIT_SUCCESS;
@@ -66,7 +67,7 @@ int main(int32_t argc, char *argv[])
 	int32_t fd = 0;
 	int32_t *wd = NULL;
 
-	while ((opt = getopt(argc, argv, "p:c:")) != -1) {
+	while ((opt = getopt(argc, argv, "vVp:c:")) != -1) {
 		switch (opt) {
 		case 'c': {
 			if (cmd_list == NULL) {
@@ -82,6 +83,12 @@ int main(int32_t argc, char *argv[])
 				string_list_add(file_list, optarg);
 			}
 			fcount++;
+		} break;
+		case 'v': {
+			set_log_level(LOG_LVL_INFO);
+		} break;
+		case 'V': {
+			set_log_level(LOG_LVL_DEBUG);
 		} break;
 		default:
 			break;
@@ -120,16 +127,19 @@ int main(int32_t argc, char *argv[])
 			struct inotify_event *event =
 				(struct inotify_event *)ptr;
 
+			log_inf("Change detected");
 			if (event->mask & IN_CLOSE_WRITE) {
-				printf("WRITE:");
-				if (event->len > 0)
-					printf(" %s\n", event->name);
-				else
-					printf(" unknown file\n");
-				if (run_commands(cmd_list) != EXIT_SUCCESS) {
-					goto cleanup;
-				}
+				log_dbg("IN_CLOSE_WRITE");
+			} else if (event->mask & IN_MODIFY) {
+				log_dbg("IN_MODIFY");
+			} else if (event->mask & IN_CREATE) {
+				log_dbg("IN_CREATE");
 			}
+			if (event->len)
+				log_dbg("Filename:\t%s", event->name);
+		}
+		if (run_commands(cmd_list) != EXIT_SUCCESS) {
+			goto cleanup;
 		}
 	}
 
