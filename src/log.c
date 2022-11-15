@@ -21,10 +21,13 @@
 
 #define MAX_LOG_LEN 512
 
-#ifndef DEBUG_BUILD
+// TODO: This looks terrible... rethink it?
+#ifdef RELEASE_BUILD
 static enum log_level current_log_level = LOG_LVL_NONE;
-#else
+#elif DEBUG_BUILD
 static enum log_level current_log_level = LOG_LVL_DEBUG;
+#else
+static enum log_level current_log_level = LOG_LVL_INFO;
 #endif
 
 void set_log_level(enum log_level level)
@@ -37,7 +40,7 @@ void log_out(enum log_level level, const char *fmt, ...)
 	va_list args;
 	va_start(args, fmt);
 
-	if (level >= current_log_level) {
+	if (level <= current_log_level) {
 		char buffer[MAX_LOG_LEN];
 		vsnprintf(buffer, MAX_LOG_LEN, fmt, args);
 

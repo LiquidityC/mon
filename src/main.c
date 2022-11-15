@@ -15,6 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -24,11 +25,26 @@
 #include <getopt.h>
 #include <sys/inotify.h>
 #include <errno.h>
+#include <stdbool.h>
+#include <signal.h>
+#include <stdatomic.h>
 
 #include "string_list.h"
 #include "memory.h"
 #include "log.h"
-#include "mon.h"
+
+struct monitor {
+	int wd;
+	char path[MAX_STRING_LIST_STRING_LEN];
+};
+
+static atomic_bool quit = false;
+
+static void signal_handler(int32_t signal)
+{
+	log_dbg("Caught signal: %d", signal);
+	quit = true;
+}
 
 static int32_t run_commands(struct string_list *commands)
 {
@@ -44,6 +60,86 @@ static int32_t run_commands(struct string_list *commands)
 	return EXIT_SUCCESS;
 }
 
+static int32_t init_monitors(int32_t fd, struct monitor *monitors,
+			     struct string_list *file_list, size_t fcount)
+{
+	struct string_list *it = file_list;
+	size_t index = 0;
+	while (it) {
+		log_inf("Watching: %s", it->val);
+		strncpy(monitors[index].path, it->val,
+			MAX_STRING_LIST_STRING_LEN);
+		monitors[index].wd = inotify_add_watch(
+			fd, it->val, IN_CLOSE_WRITE | IN_MODIFY | IN_CREATE);
+		if (monitors[index].wd == -1) {
+			perror("inotify_add_watch");
+			return EXIT_FAILURE;
+		}
+		index++;
+		it = it->next;
+	}
+	return EXIT_SUCCESS;
+}
+
+static int32_t run_monitors(int32_t fd, struct monitor *monitors,
+			    struct string_list *cmd_list, size_t fcount)
+{
+	/* Setup pollfd */
+	struct pollfd pfd;
+	pfd.fd = fd;
+	pfd.events = POLLIN;
+
+	/* Align bytes because reasons. See `man inotify` (code example) */
+	char buf[4096]
+		__attribute__((aligned(__alignof__(struct inotify_event))));
+
+	ssize_t read_len;
+
+	log_dbg("Entering main loop");
+	while (true) {
+		if (poll(&pfd, 1, 500)) {
+			if (quit)
+				break;
+
+			log_inf("Change detected");
+
+			read_len = read(fd, buf, 4096);
+			if (read_len == -1) {
+				perror("read");
+				return EXIT_FAILURE;
+			}
+
+			for (char *ptr = buf; ptr < buf + read_len;
+			     ptr += sizeof(struct inotify_event)) {
+				struct inotify_event *event =
+					(struct inotify_event *)ptr;
+
+				if (event->mask & IN_CLOSE_WRITE) {
+					log_dbg("Event: IN_CLOSE_WRITE");
+				} else if (event->mask & IN_MODIFY) {
+					log_dbg("Event: IN_MODIFY");
+				} else if (event->mask & IN_CREATE) {
+					log_dbg("Event: IN_CREATE");
+				}
+				for (size_t i = 0; i < fcount; ++i) {
+					if (monitors[i].wd == event->wd) {
+						log_inf("Path:\t%s",
+							monitors[i].path);
+						break;
+					}
+				}
+				if (event->len)
+					log_inf("File:\t%s", event->name);
+			}
+
+			if (run_commands(cmd_list) != EXIT_SUCCESS) {
+				return EXIT_FAILURE;
+			}
+		}
+	}
+	return EXIT_SUCCESS;
+}
+
 int main(int32_t argc, char *argv[])
 {
 	int32_t opt;
@@ -55,6 +151,10 @@ int main(int32_t argc, char *argv[])
 	size_t fcount = 0;
 	int32_t fd = 0;
 	int32_t *wd = NULL;
+
+	/* Setup signal handler */
+	signal(SIGINT, signal_handler);
+	signal(SIGHUP, signal_handler);
 
 	while ((opt = getopt(argc, argv, "vVp:c:")) != -1) {
 		switch (opt) {
@@ -85,69 +185,32 @@ int main(int32_t argc, char *argv[])
 	}
 
 	/* Set-up inotify */
-	if (mon_init() != EXIT_SUCCESS) {
-		perror("mon_init");
+	fd = inotify_init();
+	if (fd == -1) {
+		perror("inotify_init");
 		goto cleanup;
 	}
 
-	// TODO: Move based on the below todo comment?
-	wd = ec_calloc(fcount, sizeof(int32_t));
-	struct string_list *it = file_list;
-	size_t index = 0;
-	while (it) {
-		log_dbg("Watching: %s", it->val);
-		if (mon_watch(&wd[index++], it->val) != EXIT_SUCCESS) {
-			perror("mon_watch");
-			goto cleanup;
-		}
-		it = it->next;
-	}
+	/* Setup the monitors */
+	struct monitor *monitors = NULL;
+	monitors = ec_calloc(fcount, sizeof(struct monitor));
+	init_monitors(fd, monitors, file_list, fcount);
 
-	// TODO: move this read logic into mon.c ?
-	// mon.c could probably maintain a linked list of mon objects. Or an array
-	// with some smart resizing logic.
-	char buf[4096]
-		__attribute__((aligned(__alignof__(struct inotify_event))));
-	ssize_t read_len;
-	while (1) {
-		read_len = mon_read(buf, 4096);
-		if (read_len == -1) {
-			perror("mon_read");
-			goto cleanup;
-		}
-
-		for (char *ptr = buf; ptr < buf + read_len;
-		     ptr += sizeof(struct inotify_event)) {
-			struct inotify_event *event =
-				(struct inotify_event *)ptr;
-
-			log_inf("Change detected");
-			if (event->mask & IN_CLOSE_WRITE) {
-				log_dbg("IN_CLOSE_WRITE");
-			} else if (event->mask & IN_MODIFY) {
-				log_dbg("IN_MODIFY");
-			} else if (event->mask & IN_CREATE) {
-				log_dbg("IN_CREATE");
-			}
-			if (event->len)
-				log_dbg("Filename:\t%s", event->name);
-		}
-		if (run_commands(cmd_list) != EXIT_SUCCESS) {
-			goto cleanup;
-		}
-	}
+	run_monitors(fd, monitors, cmd_list, fcount);
 
 cleanup:
+	log_inf("Shutting down");
+
 	if (fd)
-		(void)close(fd);
+		close(fd);
 	if (wd)
 		free(wd);
 	if (cmd_list)
 		string_list_destroy(cmd_list);
 	if (file_list)
 		string_list_destroy(file_list);
-
-	mon_close();
+	if (monitors)
+		free(monitors);
 
 	return 0;
 }
