@@ -18,7 +18,7 @@
 #ifndef _LOG_H_
 #define _LOG_H_
 
-enum log_level { LOG_LVL_NONE, LOG_LVL_ERROR, LOG_LVL_INFO, LOG_LVL_DEBUG };
+enum log_level { LOG_LVL_ERROR, LOG_LVL_NONE, LOG_LVL_INFO, LOG_LVL_DEBUG };
 
 void set_log_level(enum log_level level);
 
