@@ -31,6 +31,9 @@ of file system events.
 **-c** _COMMAND_
 : A command to run when a change is detected. Can be provided multiple times.
 
+**-C**
+: Clear the terminal before executing the commands. Equivalent to '**-c** *clear*' as a first command.
+
 **-v**, **-V**
 : Verbose (*-v*) and extra verbose (*-V*) output
 

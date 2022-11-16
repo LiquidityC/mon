@@ -32,11 +32,7 @@
 #include "string_list.h"
 #include "memory.h"
 #include "log.h"
-
-struct monitor {
-	int wd;
-	char path[MAX_STRING_LIST_STRING_LEN];
-};
+#include "runtime_data.h"
 
 static atomic_bool quit = false;
 
@@ -46,32 +42,36 @@ static void signal_handler(int32_t signal)
 	quit = true;
 }
 
-static int32_t run_commands(struct string_list *commands)
+static int32_t run_commands(struct runtime_data *rd)
 {
-	while (commands) {
-		log_inf("Running command: %s", commands->val);
-		int32_t status = system(commands->val);
+	if (rd->clear_first)
+		puts("\x1b[2J\x1b[H");
+
+	struct string_list *it = rd->cmd_list;
+	while (it) {
+		log_inf("Running command: %s", it->val);
+		int32_t status = system(it->val);
 		if (status == -1) {
 			perror("system");
 			return EXIT_FAILURE;
 		};
-		commands = commands->next;
+		it = it->next;
 	}
 	return EXIT_SUCCESS;
 }
 
-static int32_t init_monitors(int32_t fd, struct monitor *monitors,
-			     struct string_list *file_list, size_t fcount)
+static int32_t init_monitors(int32_t fd, struct runtime_data *rd)
 {
-	struct string_list *it = file_list;
+	rd->monitors = ec_calloc(rd->fcount, sizeof(struct monitor));
+	struct string_list *it = rd->file_list;
 	size_t index = 0;
 	while (it) {
 		log_inf("Watching: %s", it->val);
-		strncpy(monitors[index].path, it->val,
+		strncpy(rd->monitors[index].path, it->val,
 			MAX_STRING_LIST_STRING_LEN);
-		monitors[index].wd = inotify_add_watch(
+		rd->monitors[index].wd = inotify_add_watch(
 			fd, it->val, IN_CLOSE_WRITE | IN_MODIFY | IN_CREATE);
-		if (monitors[index].wd == -1) {
+		if (rd->monitors[index].wd == -1) {
 			perror("inotify_add_watch");
 			return EXIT_FAILURE;
 		}
@@ -81,8 +81,7 @@ static int32_t init_monitors(int32_t fd, struct monitor *monitors,
 	return EXIT_SUCCESS;
 }
 
-static int32_t run_monitors(int32_t fd, struct monitor *monitors,
-			    struct string_list *cmd_list, size_t fcount)
+static int32_t run_monitors(int32_t fd, struct runtime_data *rd)
 {
 	/* Setup pollfd */
 	struct pollfd pfd;
@@ -94,6 +93,7 @@ static int32_t run_monitors(int32_t fd, struct monitor *monitors,
 		__attribute__((aligned(__alignof__(struct inotify_event))));
 
 	ssize_t read_len;
+	bool ready_to_run = false;
 
 	log_dbg("Entering main loop");
 	while (true) {
@@ -108,6 +108,7 @@ static int32_t run_monitors(int32_t fd, struct monitor *monitors,
 				perror("read");
 				return EXIT_FAILURE;
 			}
+			ready_to_run = true;
 
 			for (char *ptr = buf; ptr < buf + read_len;
 			     ptr += sizeof(struct inotify_event)) {
@@ -121,10 +122,10 @@ static int32_t run_monitors(int32_t fd, struct monitor *monitors,
 				} else if (event->mask & IN_CREATE) {
 					log_dbg("Event: IN_CREATE");
 				}
-				for (size_t i = 0; i < fcount; ++i) {
-					if (monitors[i].wd == event->wd) {
+				for (size_t i = 0; i < rd->fcount; ++i) {
+					if (rd->monitors[i].wd == event->wd) {
 						log_inf("Path:\t%s",
-							monitors[i].path);
+							rd->monitors[i].path);
 						break;
 					}
 				}
@@ -132,46 +133,41 @@ static int32_t run_monitors(int32_t fd, struct monitor *monitors,
 					log_inf("File:\t%s", event->name);
 			}
 
-			if (run_commands(cmd_list) != EXIT_SUCCESS) {
-				return EXIT_FAILURE;
+		} else {
+			/* Execute commands after a poll timeout. This will act as a form
+             * of debounce to ensure that there are no pending events in the
+             * stream */
+			if (ready_to_run) {
+				if (run_commands(rd) != EXIT_SUCCESS) {
+					return EXIT_FAILURE;
+				}
+				ready_to_run = false;
 			}
 		}
 	}
 	return EXIT_SUCCESS;
 }
 
-int main(int32_t argc, char *argv[])
+static void parse_options(int32_t argc, char **argv, struct runtime_data *rd)
 {
 	int32_t opt;
 
-	/* Prepare the command list */
-	struct string_list *cmd_list = NULL;
-	struct string_list *file_list = NULL;
-
-	size_t fcount = 0;
-	int32_t fd = 0;
-	int32_t *wd = NULL;
-
-	/* Setup signal handler */
-	signal(SIGINT, signal_handler);
-	signal(SIGHUP, signal_handler);
-
-	while ((opt = getopt(argc, argv, "vVp:c:")) != -1) {
+	while ((opt = getopt(argc, argv, "vVp:Cc:")) != -1) {
 		switch (opt) {
 		case 'c': {
-			if (cmd_list == NULL) {
-				cmd_list = string_list_create(optarg);
+			if (rd->cmd_list == NULL) {
+				rd->cmd_list = string_list_create(optarg);
 			} else {
-				string_list_add(cmd_list, optarg);
+				string_list_add(rd->cmd_list, optarg);
 			}
 		} break;
 		case 'p': {
-			if (file_list == NULL) {
-				file_list = string_list_create(optarg);
+			if (rd->file_list == NULL) {
+				rd->file_list = string_list_create(optarg);
 			} else {
-				string_list_add(file_list, optarg);
+				string_list_add(rd->file_list, optarg);
 			}
-			fcount++;
+			rd->fcount++;
 		} break;
 		case 'v': {
 			set_log_level(LOG_LVL_INFO);
@@ -179,10 +175,26 @@ int main(int32_t argc, char *argv[])
 		case 'V': {
 			set_log_level(LOG_LVL_DEBUG);
 		} break;
+		case 'C': {
+			rd->clear_first = true;
+		} break;
 		default:
 			break;
 		}
 	}
+}
+
+int main(int32_t argc, char *argv[])
+{
+	struct runtime_data *rd = rd_create();
+
+	int32_t fd = 0;
+
+	/* Setup signal handler */
+	signal(SIGINT, signal_handler);
+	signal(SIGHUP, signal_handler);
+
+	parse_options(argc, argv, rd);
 
 	/* Set-up inotify */
 	fd = inotify_init();
@@ -193,24 +205,19 @@ int main(int32_t argc, char *argv[])
 
 	/* Setup the monitors */
 	struct monitor *monitors = NULL;
-	monitors = ec_calloc(fcount, sizeof(struct monitor));
-	init_monitors(fd, monitors, file_list, fcount);
+	monitors = ec_calloc(rd->fcount, sizeof(struct monitor));
+	init_monitors(fd, rd);
 
-	run_monitors(fd, monitors, cmd_list, fcount);
+	run_monitors(fd, rd);
 
 cleanup:
 	log_inf("Shutting down");
 
 	if (fd)
 		close(fd);
-	if (wd)
-		free(wd);
-	if (cmd_list)
-		string_list_destroy(cmd_list);
-	if (file_list)
-		string_list_destroy(file_list);
 	if (monitors)
 		free(monitors);
+	rd_destroy(rd);
 
 	return 0;
 }

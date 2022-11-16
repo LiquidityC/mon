@@ -1,6 +1,8 @@
+VERSION = 1.0.0
+
 CC			= gcc
 LDFLAGS		=
-CFLAGS		= -Iinc
+CFLAGS		= -Iinc -DVERSION=$(VERSION)
 RM			= rm
 MODULE		= mon
 FORMAT		= clang-format
