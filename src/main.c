@@ -34,6 +34,10 @@
 #include "log.h"
 #include "runtime_data.h"
 
+#ifndef VERSION
+#define VERSION "x.y.z"
+#endif
+
 static atomic_bool quit = false;
 
 static void signal_handler(int32_t signal)
@@ -148,11 +152,24 @@ static int32_t run_monitors(int32_t fd, struct runtime_data *rd)
 	return EXIT_SUCCESS;
 }
 
-static void parse_options(int32_t argc, char **argv, struct runtime_data *rd)
+static void print_usage(const char *prog)
+{
+	printf("USAGE: %s [options]\n", prog);
+	printf("EXAMPLE: %s -p path/to/monitor -c 'command to run'\n", prog);
+	printf("\n");
+	printf("-h          Print this information\n");
+	printf("-p PATH     A path/file to monitor for changes. Multiples allowed\n");
+	printf("-c COMMAND  A command to run on change event. Multiples allowed\n");
+	printf("-C          Clear screen before running commands\n");
+	printf("-v          Verbose output\n");
+	printf("-V          Debug output output\n");
+}
+
+static int32_t parse_options(int32_t argc, char **argv, struct runtime_data *rd)
 {
 	int32_t opt;
 
-	while ((opt = getopt(argc, argv, "vVp:Cc:")) != -1) {
+	while ((opt = getopt(argc, argv, "hvVp:Cc:")) != -1) {
 		switch (opt) {
 		case 'c': {
 			if (rd->cmd_list == NULL) {
@@ -178,10 +195,16 @@ static void parse_options(int32_t argc, char **argv, struct runtime_data *rd)
 		case 'C': {
 			rd->clear_first = true;
 		} break;
+		case 'h': {
+			printf("mon v%s\n\n", VERSION);
+			print_usage(argv[0]);
+			return EXIT_FAILURE;
+		} break;
 		default:
 			break;
 		}
 	}
+	return EXIT_SUCCESS;
 }
 
 int main(int32_t argc, char *argv[])
@@ -194,7 +217,16 @@ int main(int32_t argc, char *argv[])
 	signal(SIGINT, signal_handler);
 	signal(SIGHUP, signal_handler);
 
-	parse_options(argc, argv, rd);
+	if (parse_options(argc, argv, rd) != EXIT_SUCCESS) {
+		goto cleanup;
+	}
+
+	if (!rd->file_list || !rd->cmd_list) {
+		/* No commands or paths provided */
+		log_err("At least one command (-c) and one path (-p) expected\n");
+		print_usage(argv[0]);
+		goto cleanup;
+	}
 
 	/* Set-up inotify */
 	fd = inotify_init();

@@ -25,6 +25,9 @@ of file system events.
 
 # OPTIONS
 
+**-h**
+: Print help
+
 **-p** _PATH_
 : A file or directory to monitor. Can be provided multiple times.
 
