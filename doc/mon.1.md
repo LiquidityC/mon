@@ -45,7 +45,7 @@ of file system events.
 Please report any bugs at <https://github.com/LiquidityC/mon>
 
 # COPYRIGHT
-Copyright (C) 2022  Linus Probert
+Copyright (C) 2023  Linus Probert
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
