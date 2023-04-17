@@ -1,0 +1,24 @@
+# Your .github/workflows/coverity.yml file.
+name: Coverity Scan
+
+# We only want to test official release code, not every pull request.
+on:
+  push:
+    branches: [master]
+
+  schedule:
+    # Fire it once a week to provide some coverage.
+    - cron: '39 2 * * WED'
+
+  # Allow manual trigger from web
+  workflow_dispatch:
+
+jobs:
+  coverity:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: vapier/coverity-scan-action@v1
+      with:
+        email: ${{ secrets.COVERITY_SCAN_EMAIL }}
+        token: ${{ secrets.COVERITY_SCAN_TOKEN }}
