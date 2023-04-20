@@ -72,7 +72,7 @@ static int32_t init_monitors(int32_t fd, struct runtime_data *rd)
 	while (it) {
 		log_inf("Watching: %s", it->val);
 		strncpy(rd->monitors[index].path, it->val,
-			MAX_STRING_LIST_STRING_LEN);
+			MAX_STRING_LIST_STRING_LEN-1);
 		rd->monitors[index].wd = inotify_add_watch(
 			fd, it->val, IN_CLOSE_WRITE | IN_MODIFY | IN_CREATE);
 		if (rd->monitors[index].wd == -1) {

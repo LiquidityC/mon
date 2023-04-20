@@ -1,4 +1,5 @@
 [![Build and Check](https://github.com/LiquidityC/mon/actions/workflows/build-check.yml/badge.svg)](https://github.com/LiquidityC/mon/actions/workflows/build-check.yml)
+[![Coverity Scan](https://img.shields.io/coverity/scan/28229.svg)](https://scan.coverity.com/projects/liquidityc-mon)
 
 ## mon - react to changes in a file system path
 

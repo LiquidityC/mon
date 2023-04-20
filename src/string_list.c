@@ -23,7 +23,7 @@
 struct string_list *string_list_create(const char *cmd)
 {
 	struct string_list *cl = ec_malloc(sizeof(struct string_list));
-	strncpy(cl->val, cmd, MAX_STRING_LIST_STRING_LEN);
+	strncpy(cl->val, cmd, MAX_STRING_LIST_STRING_LEN-1);
 	cl->next = NULL;
 	return cl;
 }
