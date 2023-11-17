@@ -12,11 +12,11 @@ of file system events.
 
 ## Synopsis
 
-**mon** -p *FILE* -c *COMMAND*
+**mon** -c *COMMAND* *PATH*
 
 ## Examples
 
-**mon** -p */path/to/dir* -c *"make test"*
+**mon** -c *"make test"* */path/to/dir*
 
 ## Compiling
 
