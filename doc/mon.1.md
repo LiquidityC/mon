@@ -8,11 +8,13 @@ mon - react to changes in a file system path
 
 # SYNOPSIS
 
-**mon** -f *FILE* -c *COMMAND*
+**mon** -c *COMMAND* *<PATH/PATTERN>*
 
 # EXAMPLES
 
-**mon** -p */path/to/dir* -c *"make test"*
+**mon** -c *"make test"* */path/to/dir*  
+**mon** -c *"make test"* */path/to/dir/\**  
+**mon** -c *"make test"* *$(find . -iname \*.c -o -iname \*.h)*
 
 # DESCRIPTION
 
@@ -27,9 +29,6 @@ of file system events.
 
 **-h**
 : Print help
-
-**-p** _PATH_
-: A file or directory to monitor. Can be provided multiple times.
 
 **-c** _COMMAND_
 : A command to run when a change is detected. Can be provided multiple times.

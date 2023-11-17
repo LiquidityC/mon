@@ -72,7 +72,7 @@ static int32_t init_monitors(int32_t fd, struct runtime_data *rd)
 	while (it) {
 		log_inf("Watching: %s", it->val);
 		strncpy(rd->monitors[index].path, it->val,
-			MAX_STRING_LIST_STRING_LEN-1);
+			MAX_STRING_LIST_STRING_LEN - 1);
 		rd->monitors[index].wd = inotify_add_watch(
 			fd, it->val, IN_CLOSE_WRITE | IN_MODIFY | IN_CREATE);
 		if (rd->monitors[index].wd == -1) {
@@ -155,10 +155,9 @@ static int32_t run_monitors(int32_t fd, struct runtime_data *rd)
 static void print_usage(const char *prog)
 {
 	printf("USAGE: %s [options]\n", prog);
-	printf("EXAMPLE: %s -p path/to/monitor -c 'command to run'\n", prog);
+	printf("EXAMPLE: %s -c 'command to run' path/to/monitor\n", prog);
 	printf("\n");
 	printf("-h          Print this information\n");
-	printf("-p PATH     A path/file to monitor for changes. Multiples allowed\n");
 	printf("-c COMMAND  A command to run on change event. Multiples allowed\n");
 	printf("-C          Clear screen before running commands\n");
 	printf("-v          Verbose output\n");
@@ -167,9 +166,9 @@ static void print_usage(const char *prog)
 
 static int32_t parse_options(int32_t argc, char **argv, struct runtime_data *rd)
 {
-	int32_t opt;
+	char opt;
 
-	while ((opt = getopt(argc, argv, "hvVp:Cc:")) != -1) {
+	while ((opt = getopt(argc, argv, "hvVCc:")) != -1) {
 		switch (opt) {
 		case 'c': {
 			if (rd->cmd_list == NULL) {
@@ -177,14 +176,6 @@ static int32_t parse_options(int32_t argc, char **argv, struct runtime_data *rd)
 			} else {
 				string_list_add(rd->cmd_list, optarg);
 			}
-		} break;
-		case 'p': {
-			if (rd->file_list == NULL) {
-				rd->file_list = string_list_create(optarg);
-			} else {
-				string_list_add(rd->file_list, optarg);
-			}
-			rd->fcount++;
 		} break;
 		case 'v': {
 			set_log_level(LOG_LVL_INFO);
@@ -204,6 +195,16 @@ static int32_t parse_options(int32_t argc, char **argv, struct runtime_data *rd)
 			break;
 		}
 	}
+
+	for (size_t i = optind; i < argc; ++i) {
+		if (rd->file_list == NULL) {
+			rd->file_list = string_list_create(argv[i]);
+		} else {
+			string_list_add(rd->file_list, argv[i]);
+		}
+		rd->fcount++;
+	}
+
 	return EXIT_SUCCESS;
 }
 
@@ -223,7 +224,7 @@ int main(int32_t argc, char *argv[])
 
 	if (!rd->file_list || !rd->cmd_list) {
 		/* No commands or paths provided */
-		log_err("At least one command (-c) and one path (-p) expected\n");
+		log_err("At least one command (-c) and one path expected\n");
 		print_usage(argv[0]);
 		goto cleanup;
 	}
