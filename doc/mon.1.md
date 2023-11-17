@@ -1,6 +1,6 @@
-% MON(1) mon 0.1.0
+% MON(1) mon 2.0.1
 % Linus Probert
-% November 2022
+% November 2023
 
 # NAME
 
