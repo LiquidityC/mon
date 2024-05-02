@@ -211,6 +211,7 @@ static int32_t parse_options(int32_t argc, char **argv, struct runtime_data *rd)
 int main(int32_t argc, char *argv[])
 {
 	struct runtime_data *rd = rd_create();
+	struct monitor *monitors = NULL;
 
 	int32_t fd = 0;
 
@@ -237,7 +238,6 @@ int main(int32_t argc, char *argv[])
 	}
 
 	/* Setup the monitors */
-	struct monitor *monitors = NULL;
 	monitors = ec_calloc(rd->fcount, sizeof(struct monitor));
 	init_monitors(fd, rd);
 
