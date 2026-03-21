@@ -1,6 +1,5 @@
-% MON(1) mon @VERSION@
+% MON(1) mon
 % Linus Probert
-% @DATE@
 
 # NAME
 
