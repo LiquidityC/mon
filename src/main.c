@@ -24,7 +24,6 @@
 #include <string.h>
 #include <getopt.h>
 #include <sys/inotify.h>
-#include <errno.h>
 #include <stdbool.h>
 #include <signal.h>
 #include <stdatomic.h>
@@ -101,10 +100,11 @@ static int32_t run_monitors(int32_t fd, struct runtime_data *rd)
 
 	log_dbg("Entering main loop");
 	while (true) {
-		if (poll(&pfd, 1, 500)) {
-			if (quit)
-				break;
+		if (quit)
+			break;
 
+		int poll_ret = poll(&pfd, 1, 500);
+		if (poll_ret > 0) {
 			log_inf("Change detected");
 
 			read_len = read(fd, buf, 4096);
@@ -114,10 +114,11 @@ static int32_t run_monitors(int32_t fd, struct runtime_data *rd)
 			}
 			ready_to_run = true;
 
-			for (char *ptr = buf; ptr < buf + read_len;
-			     ptr += sizeof(struct inotify_event)) {
+			for (char *ptr = buf; ptr < buf + read_len;) {
 				struct inotify_event *event =
 					(struct inotify_event *)ptr;
+				ptr += sizeof(struct inotify_event) +
+				       event->len;
 
 				if (event->mask & IN_CLOSE_WRITE) {
 					log_dbg("Event: IN_CLOSE_WRITE");
@@ -137,10 +138,10 @@ static int32_t run_monitors(int32_t fd, struct runtime_data *rd)
 					log_inf("File:\t%s", event->name);
 			}
 
-		} else {
+		} else if (poll_ret == 0) {
 			/* Execute commands after a poll timeout. This will act as a form
-             * of debounce to ensure that there are no pending events in the
-             * stream */
+			 * of debounce to ensure that there are no pending events in the
+			 * stream */
 			if (ready_to_run) {
 				if (run_commands(rd) != EXIT_SUCCESS) {
 					return EXIT_FAILURE;
@@ -211,8 +212,6 @@ static int32_t parse_options(int32_t argc, char **argv, struct runtime_data *rd)
 int main(int32_t argc, char *argv[])
 {
 	struct runtime_data *rd = rd_create();
-	struct monitor *monitors = NULL;
-
 	int32_t fd = 0;
 
 	/* Setup signal handler */
@@ -238,7 +237,6 @@ int main(int32_t argc, char *argv[])
 	}
 
 	/* Setup the monitors */
-	monitors = ec_calloc(rd->fcount, sizeof(struct monitor));
 	init_monitors(fd, rd);
 
 	run_monitors(fd, rd);
@@ -248,8 +246,6 @@ cleanup:
 
 	if (fd)
 		close(fd);
-	if (monitors)
-		free(monitors);
 	rd_destroy(rd);
 
 	return 0;
