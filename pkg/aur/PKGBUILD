@@ -11,7 +11,7 @@ sha256sums=('SKIP')
 
 build() {
     cd "$pkgname-$pkgver"
-    make RELEASE_BUILD=1
+    make RELEASE_BUILD=1 GIT_TAG="$pkgver"
 }
 
 package() {
