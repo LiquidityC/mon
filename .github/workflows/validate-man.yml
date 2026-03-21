@@ -1,0 +1,34 @@
+name: Validate man page
+
+on:
+  push:
+    paths:
+      - 'doc/**.md'
+      - 'doc/man/*.1'
+  pull_request:
+    paths:
+      - 'doc/**.md'
+      - 'doc/man/*.1'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pandoc
+        run: sudo apt-get install -y pandoc
+
+      - name: Save committed man page
+        run: cp doc/man/mon.1 /tmp/mon.1.committed
+
+      - name: Regenerate man page
+        run: make man
+
+      - name: Check man page matches source
+        run: |
+          diff \
+            <(grep -v '^\.TH' /tmp/mon.1.committed) \
+            <(grep -v '^\.TH' doc/man/mon.1) \
+            || { echo "doc/man/mon.1 is out of sync with doc/mon.1.md — run 'make man' and commit the result"; exit 1; }
