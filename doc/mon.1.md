@@ -1,6 +1,6 @@
-% MON(1) mon 2.0.1
+% MON(1) mon @VERSION@
 % Linus Probert
-% November 2023
+% @DATE@
 
 # NAME
 
@@ -8,7 +8,7 @@ mon - react to changes in a file system path
 
 # SYNOPSIS
 
-**mon** -c *COMMAND* *<PATH/PATTERN>*
+**mon** -c *COMMAND* *\<PATH/PATTERN\>*
 
 # EXAMPLES
 

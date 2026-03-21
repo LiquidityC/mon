@@ -1,5 +1,7 @@
 GIT_TAG	   := $(shell git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
-VERSION		= \"$(if $(GIT_TAG),$(GIT_TAG),2.0.2)\"
+DOC_VERSION	= $(if $(GIT_TAG),$(GIT_TAG),2.0.2)
+DOC_DATE	= $(shell git log -1 --format=%cd --date=format:'%B %Y' 2>/dev/null || date '+%B %Y')
+VERSION		= \"$(DOC_VERSION)\"
 
 CC			= gcc
 LDFLAGS		=
@@ -59,7 +61,7 @@ check:
 
 $(MANFILES): $(MDFILES)
 	@mkdir -p $(MANDIR)
-	$(PANDOC) $< -s -t man -o $@
+	sed -e 's/@VERSION@/$(DOC_VERSION)/g' -e 's/@DATE@/$(DOC_DATE)/g' $< | $(PANDOC) -s -t man -o $@
 
 man: $(MANFILES)
 
