@@ -1,3 +1,4 @@
 *.o
 mon
-/doc/man/*
+/doc/man/*.html
+/doc/man/*.pdf
