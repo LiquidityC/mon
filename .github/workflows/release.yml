@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: sudo apt-get install -y pandoc ruby-dev build-essential rpm
+
+      - name: Install fpm
+        run: sudo gem install fpm
+
+      - name: Set version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+
+      - name: Build release binary and man page
+        run: make all
+        env:
+          RELEASE_BUILD: 1
+
+      - name: Stage installation
+        run: make install
+        env:
+          RELEASE_BUILD: 1
+          PREFIX: ./pkg/usr
+
+      - name: Build deb package
+        run: |
+          fpm -s dir -t deb \
+            -n mon \
+            -v "$VERSION" \
+            --description "Filesystem change monitor that triggers shell commands" \
+            --license "GPL-3.0" \
+            --maintainer "Linus Probert" \
+            --url "https://github.com/${{ github.repository }}" \
+            --architecture amd64 \
+            -C pkg \
+            usr
+          mv mon_${VERSION}_amd64.deb mon-${VERSION}.amd64.deb
+
+      - name: Build rpm package
+        run: |
+          fpm -s dir -t rpm \
+            -n mon \
+            -v "$VERSION" \
+            --description "Filesystem change monitor that triggers shell commands" \
+            --license "GPL-3.0" \
+            --maintainer "Linus Probert" \
+            --url "https://github.com/${{ github.repository }}" \
+            --architecture x86_64 \
+            -C pkg \
+            usr
+          mv mon-${VERSION}-1.x86_64.rpm mon-${VERSION}.x86_64.rpm
+
+      - name: Create draft release and upload artifacts
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "Release ${{ github.ref_name }}" \
+            --draft \
+            --generate-notes \
+            mon-${VERSION}.amd64.deb \
+            mon-${VERSION}.x86_64.rpm
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

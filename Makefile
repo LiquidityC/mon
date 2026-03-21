@@ -1,4 +1,5 @@
-VERSION = \"2.0.2\"
+GIT_TAG	   := $(shell git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+VERSION		= \"$(if $(GIT_TAG),$(GIT_TAG),2.0.2)\"
 
 CC			= gcc
 LDFLAGS		=
